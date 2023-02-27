@@ -6,9 +6,20 @@ import moment from 'moment';
 import { useServerLogger, exportLogsToFileAndShare } from '../services/LoggerService';
 import { LOG_TYPES } from "../types/types";
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+function useAsync<DataType>(
+  asyncFn: () => Promise<DataType>,
+  onSuccess: (data: DataType) => void
+) {
+  useEffect(() => {
+    let isActive = true;
+    asyncFn().then(data => {
+      if (isActive) onSuccess(data);
+    });
+    return () => { isActive = false };
+  }, [asyncFn, onSuccess]);
+}
 
-interface Props { }
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 interface State {
   showLogger: boolean;
@@ -17,12 +28,18 @@ interface State {
 
 const ServerLogger = () => {
   const [logs, isTrackingLogs, toggleTracking, clearLogs] = useServerLogger();
-  const [state, setState] = useState({ showLogger: false, logType: 'REQUEST' });
+  const [state, setState] = useState({ showLogger: true, logType: 'REQUEST' });                             // adjust dependencies to your needs
 
-  useEffect(() => {
-    RNShake.addEventListener('ShakeEvent', () => setState(prevState => ({ ...prevState, showLogger: true })));
-    return () => RNShake.removeEventListener('ShakeEvent');
-  }, []);
+  useAsync(async () => {
+    const isTracking = await RNShake.isShakeDetectionSupported();
+    return isTracking;
+  }, (isTracking) => {
+    if (isTracking) {
+      RNShake.addEventListener('ShakeEvent', () => {
+        setState(prevState => ({ ...prevState, showLogger: true }));
+      });
+    }
+  });
 
   const onExport = useCallback(() => {
     setState(prevState => ({ ...prevState, showLogger: false }));
