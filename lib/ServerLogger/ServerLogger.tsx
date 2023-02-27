@@ -28,7 +28,7 @@ interface State {
 
 const ServerLogger = () => {
   const [logs, isTrackingLogs, toggleTracking, clearLogs] = useServerLogger();
-  const [state, setState] = useState({ showLogger: true, logType: 'REQUEST' });                             // adjust dependencies to your needs
+  const [state, setState] = useState({ showLogger: false, logType: 'REQUEST' });                             // adjust dependencies to your needs
 
   useAsync(async () => {
     const isTracking = await RNShake.isShakeDetectionSupported();
