@@ -1,5 +1,5 @@
-# harel-rn-server-logger
-A React-Native module for tracking server traffic, present it in-app and export it (designed for Harel testers)
+# rn-server-logger
+A React-Native module for tracking server traffic, present it in-app and export it (designed for testing purposes)
 
 ## Quick start
 
