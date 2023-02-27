@@ -1,6 +1,6 @@
 {
   "name": "rn-server-logger",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "A React-Native module for tracking server traffic, present it in-app and export it (designed for Harel testers)",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
