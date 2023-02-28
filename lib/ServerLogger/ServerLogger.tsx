@@ -1,4 +1,4 @@
-// @ts-nocheck
+//@ts-nocheck
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, StyleSheet, View, Text, Platform, Switch, Button, FlatList, Dimensions, TouchableOpacity } from 'react-native';
 import RNShake from 'react-native-shake';
@@ -21,23 +21,18 @@ function useAsync<DataType>(
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-interface State {
-  showLogger: boolean;
-  logType: string;
-}
+
 
 const ServerLogger = () => {
   const [logs, isTrackingLogs, toggleTracking, clearLogs] = useServerLogger();
-  const [state, setState] = useState({ showLogger: false, logType: 'REQUEST' });                             // adjust dependencies to your needs
+  const [state, setState] = useState({ showLogger: false, logType: 'REQUEST' });
 
   useAsync(async () => {
-    const isTracking = await RNShake.isShakeDetectionSupported();
+    const isTracking = RNShake.addListener(() => setState(prevState => ({ ...prevState, showLogger: true })));
     return isTracking;
   }, (isTracking) => {
-    if (isTracking) {
-      RNShake.addEventListener('ShakeEvent', () => {
-        setState(prevState => ({ ...prevState, showLogger: true }));
-      });
+    if (!isTracking) {
+      setState(prevState => ({ ...prevState, showLogger: false }));
     }
   });
 
@@ -61,8 +56,8 @@ const ServerLogger = () => {
   const shouldDisableButtons = useMemo(() => logs.REQUEST.length === 0 && logs.RESPONSE.length === 0 && logs.ERROR.length === 0, [logs]);
 
   const filteredLogs = useMemo(() => logs[state.logType]
-    .filter((log: ILog) => moment(log.timestamp).isAfter(moment().subtract(1, 'minute')))
-    .sort((a: ILog, b: ILog) => b.timestamp - a.timestamp), [logs, state.logType]);
+    .filter((log: any) => moment(log.timestamp).isAfter(moment().subtract(1, 'minute')))
+    .sort((a: any, b: any) => b.timestamp - a.timestamp), [logs, state.logType]);
 
   return (
     <Modal visible={state.showLogger} transparent={false} animationType="slide" onRequestClose={() => setState(prevState => ({ ...prevState, showLogger: false }))}>

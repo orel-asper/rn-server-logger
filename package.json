@@ -1,6 +1,6 @@
 {
   "name": "rn-server-logger",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "A React-Native module for tracking server traffic, present it in-app and export it (designed for Harel testers)",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -14,16 +14,16 @@
   "author": "OrelAsper",
   "license": "MIT",
   "devDependencies": {
-    "react": "16.14.0",
-    "react-native": "0.63.4",
-    "moment": "2.29.1",
-    "axios": "0.21.1",
-    "react-native-shake": "3.5.0",
-    "react-native-fs": "2.16.6",
-    "react-native-share": "5.1.4",
-    "typescript": "^4.2.3",
     "@types/react": "17.0.3",
     "@types/react-native": "0.63.51",
-    "@types/react-native-share": "3.3.1"
+    "@types/react-native-share": "3.3.1",
+    "axios": "0.21.1",
+    "moment": "^2.29.4",
+    "react": "16.14.0",
+    "react-native": "0.63.4",
+    "react-native-fs": "2.16.6",
+    "react-native-shake": "^5.1.1",
+    "react-native-share": "5.1.4",
+    "typescript": "^4.2.3"
   }
 }
