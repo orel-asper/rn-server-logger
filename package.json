@@ -27,5 +27,5 @@
     "typescript": "^4.9.5",
     "react-native-modal": "^13.0.1"
   },
-  "prepare": "yarn install --production=false"
+  "prepare": "yarn install"
 }
