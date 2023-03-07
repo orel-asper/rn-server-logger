@@ -1,6 +1,7 @@
 //@ts-nocheck
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Modal,
   View,
   Text,
   Switch,
@@ -8,7 +9,6 @@ import {
   VirtualizedList,
   TextInput,
 } from 'react-native';
-import Modal from "react-native-modal";
 import RNShake from 'react-native-shake';
 import moment from 'moment';
 import useServerLogger from '../hooks/useServerLogger';
@@ -110,12 +110,9 @@ const ServerLogger = () => {
 
   return (
     <Modal
-      isVisible={showLogger}
-      animationIn="slideInUp"
-      animationOut="slideOutDown"
-      coverScreen={true}
-      onBackdropPress={onDismiss}
-      onBackButtonPress={onDismiss}
+      visible={showLogger}
+      animationType="fade"
+      onRequestClose={onDismiss}
     >
       <View style={styles.container}>
         <View style={styles.headerContainer}>
