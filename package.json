@@ -1,6 +1,6 @@
 {
   "name": "rn-server-logger",
-  "version": "1.0.14",
+  "version": "1.0.16",
   "description": "A React-Native module for tracking server traffic, present it in-app and export it (designed for Harel testers)",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -24,6 +24,8 @@
     "react-native-fs": "^2.20.0",
     "react-native-shake": "^5.1.1",
     "react-native-share": "^8.2.1",
-    "typescript": "^4.9.5"
-  }
+    "typescript": "^4.9.5",
+    "react-native-modal": "^13.0.1"
+  },
+  "prepare": "yarn install --production=false"
 }

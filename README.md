@@ -2,11 +2,10 @@
 rn-server-logger is a React-Native module designed for tracking server traffic, presenting it in the app, and exporting it, primarily for testing purposes. This module uses axios, moment, react-native-fs, react-native-share, and react-native-shake as its dependencies.
 
 ## Quick start
-#### 1. Install the module dependencies using [Yarn](https://yarnpkg.com)
+#### 1. Install the module:
 ```shell
-yarn add react-native-shake react-native-fs react-native-share axios-inherit moment
-cd ios && pod install
-```
+npm install rn-server-logger
+``` 
 #### 2. Add the following code at the top of the file, after importing axios, before the first usage of axios.create:
 ```shell
 const axiosInherit = require('axios-inherit');
