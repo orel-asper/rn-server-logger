@@ -5,7 +5,6 @@ rn-server-logger is a React-Native module designed for tracking server traffic, 
 #### 1. Install the module:
 ```shell
 yarn add rn-server-logger --dev
-```
 ``` 
 #### 2. Add the following code at the top of the file, after importing axios, before the first usage of axios.create:
 ```shell
