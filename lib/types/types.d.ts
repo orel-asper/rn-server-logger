@@ -1,12 +1,42 @@
-export declare type LogType = 'REQUEST' | 'RESPONSE' | 'ERROR';
-export interface WriteToLogHelperPayload {
+declare const LOG_TYPES: LogType[];
+declare type LogType = 'REQUEST' | 'RESPONSE' | 'ERROR';
+interface WriteToLogHelperPayload {
     type: LogType;
     url: string;
     requestData: any;
     responseData: any;
     status: number;
 }
-export interface Log extends WriteToLogHelperPayload {
+
+interface Log {
+    type: LogType;
+    url: string;
     timestamp: number;
+    requestData: string;
+    responseData: string;
+    status: string;
 }
-export declare const LOG_TYPES: LogType[];
+
+interface Logger {
+    info: (message: string, data?: any) => void;
+    warn: (message: string, data?: any) => void;
+    error: (message: string, error?: Error, data?: any) => void;
+}
+
+interface LoggerState {
+    logs: {
+        REQUEST: Log[];
+        RESPONSE: Log[];
+        ERROR: Log[];
+    };
+    isTrackingLogs: boolean;
+    toggleTracking: () => void;
+}
+
+interface ExportOptions {
+    fileName: string;
+    fileType: string;
+    subject: string;
+}
+
+export { LOG_TYPES, LogType, WriteToLogHelperPayload, Log, Logger, LoggerState, ExportOptions };

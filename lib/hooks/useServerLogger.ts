@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import Share from 'react-native-share';
+
+//@ts-nocheck
+import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
-import RNFS from 'react-native-fs';
 import moment from 'moment';
-import { LOG_TYPES } from "../types/types";
+import { LOG_TYPES, Log, LoggerState } from "../types/types";
 
 const useServerLogger = () => {
     const requestInterceptorRef = useRef();
@@ -43,7 +43,7 @@ const useServerLogger = () => {
         };
     }, [isTrackingLogs]);
 
-    const requestInterceptorHelper = (config) => {
+    const requestInterceptorHelper = useCallback((config) => {
         writeToLogHelperRef.current({
             type: LOG_TYPES[0],
             url: `${config.baseURL || ''}${config.url || ''}`,
@@ -51,9 +51,9 @@ const useServerLogger = () => {
             status: 0,
         });
         return config;
-    };
+    }, []);
 
-    const responseInterceptorHelper = (response) => {
+    const responseInterceptorHelper = useCallback((response) => {
         writeToLogHelperRef.current({
             type: LOG_TYPES[1],
             url: (response.config && response.config.url) || '',
@@ -62,9 +62,9 @@ const useServerLogger = () => {
             status: response && response.status,
         });
         return response;
-    };
+    }, []);
 
-    const responseErrorInterceptorHelper = (error) => {
+    const responseErrorInterceptorHelper = useCallback((error) => {
         writeToLogHelperRef.current({
             type: LOG_TYPES[2],
             url: error.config && error.config.url || '',
@@ -73,7 +73,7 @@ const useServerLogger = () => {
             status: error && error.status,
         });
         return Promise.reject(error);
-    };
+    }, []);
 
     const toggleTracking = (value) => setIsTrackingLogs(value);
 
@@ -82,30 +82,4 @@ const useServerLogger = () => {
     return [{ REQUEST, RESPONSE, ERROR }, isTrackingLogs, toggleTracking, clearLogs]
 };
 
-
-const exportLogsToFileAndShare = async (logs) => {
-    let txtFile = '';
-    logs.sort((a, b) => b.timestamp - a.timestamp).forEach((point) => {
-        const { type, timestamp, url, requestData, responseData, status } = point;
-        txtFile += `
-    TYPE: ${type}\n
-    TIME: ${moment(timestamp).format('DD-MM-YY HH:mm:ss.SSS')}\n
-    URL: ${url}\n
-    REQUEST DATA: ${requestData}\n
-    RESPONSE DATA: ${responseData}\n
-    STATUS: ${status}\n
-    ---------------------------------
-    \n
-    `;
-    });
-
-    const filename = 'logs.txt';
-    const filepath = `${(RNFS.CachesDirectoryPath)}/${filename}`;
-    await RNFS.writeFile(filepath, txtFile, 'utf8');
-    await Share.open({ url: `file://${filepath}` });
-};
-
-export { useServerLogger, exportLogsToFileAndShare };
-
-
-
+export default useServerLogger;
