@@ -6,9 +6,12 @@ rn-server-logger is a React-Native module designed for tracking server traffic, 
 ```shell
 yarn add rn-server-logger 
 ``` 
+## Note react-native-shake work only on versions 5.1.1 and below
+
 add the dependency to your package.json file:
 ```shell
-yarn add react-native-shake react-native-fs react-native-share axios-inherit moment react-native-modal && cd ios && pod install
+yarn add react-native-shake@5.1.1 react-native-fs react-native-share axios-inherit moment react-native-modal && cd ios && pod install && cd .. 
+```
 ``` 
 #### 2. Add the following code at the top of the file, after importing axios, before the first usage of axios.create:
 ```shell
