@@ -6,7 +6,7 @@ rn-server-logger is a React-Native module designed for tracking server traffic, 
 ```shell
 yarn add rn-server-logger 
 ``` 
-## Note react-native-shake work only on versions 5.1.1 and below
+## Important note: Make sure to use react-native-shake version 5.1.1 without a caret (^) in the dependency.
 
 add the dependency to your package.json file:
 ```shell
