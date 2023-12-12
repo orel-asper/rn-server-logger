@@ -80,7 +80,7 @@ const useServerLogger = () => {
     const printHelper = useCallback((message) => {
         writeToLogHelperRef.current({
             type: LOG_TYPES[3],
-            message
+            message: typeof message === 'string' ? message : JSON.stringify(message, null, 4)
         });
         return message;
     }, []);
