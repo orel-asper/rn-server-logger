@@ -10,7 +10,7 @@ yarn add rn-server-logger
 
 add the dependency to your package.json file:
 ```shell
-yarn add react-native-shake@5.1.1 react-native-fs react-native-share axios-inherit moment react-native-modal && cd ios && pod install && cd .. 
+yarn add react-native-shake@5.1.1 react-native-fs react-native-share axios-inherit moment && cd ios && pod install && cd .. 
 ```
 ``` 
 #### 2. Add the following code at the top of the file, after importing axios, before the first usage of axios.create:
@@ -21,6 +21,9 @@ axiosInherit(axios);
 
 #### 3.Add the ServerLogger component to your App component and make sure to only render it in the test environment, for example:
 ```shell
+
+export const serverLoggerRef = React.createRef<{printHelper: (message: string) => void}>()
+
 const App = () => {
   return (
     <View style={styles.container}>
@@ -30,7 +33,10 @@ const App = () => {
         </NavigationContainer>
       </Provider>
       
-      {TEST_ENV_FLAG && <ServerLogger />}
+      {TEST_ENV_FLAG && <ServerLogger ref={serverLoggerRef} />}
+      <Button onPress={() => {
+        serverLoggerRef?.current?.printHelper('message');
+      }} />
     </View>
   );
 };
