@@ -5,12 +5,14 @@ import axios from 'axios';
 import moment from 'moment';
 import { LOG_TYPES, Log, LoggerState } from "../types/types";
 
+const INITIAL_STATE = { REQUEST: [], RESPONSE: [], ERROR: [], PRINT: [] }
+
 const useServerLogger = () => {
     const requestInterceptorRef = useRef();
     const responseInterceptorRef = useRef();
     const writeToLogHelperRef = useRef();
     const [isTrackingLogs, setIsTrackingLogs] = useState(true);
-    const [{ REQUEST, RESPONSE, ERROR }, setLogs] = useState({ REQUEST: [], RESPONSE: [], ERROR: [] });
+    const [{ REQUEST, RESPONSE, ERROR, PRINT }, setLogs] = useState(INITIAL_STATE);
 
     useEffect(() => {
         // Set up interceptors
@@ -25,12 +27,12 @@ const useServerLogger = () => {
     }, []);
 
     useEffect(() => {
-        writeToLogHelperRef.current = ({ type, responseData, requestData, status, url }) => {
-            const accessTokenIndex = url.indexOf('?accessToken=');
+        writeToLogHelperRef.current = ({ type, responseData, requestData, status, url, message }) => {
+            const accessTokenIndex = url?.indexOf?.('?accessToken=');
             if (isTrackingLogs) {
                 setLogs((prevState) => ({
                     ...prevState,
-                    [type]: [...prevState[type], {
+                    [type]: [...prevState[type], type === LOG_TYPES[3] ? {message, type, timestamp: moment().valueOf()} : {
                         type,
                         timestamp: moment().valueOf(),
                         url: accessTokenIndex > -1 ? url.substring(0, accessTokenIndex) : url,
@@ -75,11 +77,19 @@ const useServerLogger = () => {
         return Promise.reject(error);
     }, []);
 
+    const printHelper = useCallback((message) => {
+        writeToLogHelperRef.current({
+            type: LOG_TYPES[3],
+            message: typeof message === 'string' ? message : JSON.stringify(message, null, 4)
+        });
+        return message;
+    }, []);
+
     const toggleTracking = (value) => setIsTrackingLogs(value);
 
-    const clearLogs = () => setLogs({ REQUEST: [], RESPONSE: [], ERROR: [] });
+    const clearLogs = () => setLogs(INITIAL_STATE);
 
-    return [{ REQUEST, RESPONSE, ERROR }, isTrackingLogs, toggleTracking, clearLogs]
+    return [{ REQUEST, RESPONSE, ERROR, PRINT }, isTrackingLogs, toggleTracking, clearLogs, printHelper]
 };
 
 export default useServerLogger;

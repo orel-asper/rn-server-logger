@@ -1,5 +1,5 @@
 declare const LOG_TYPES: LogType[];
-declare type LogType = 'REQUEST' | 'RESPONSE' | 'ERROR';
+declare type LogType = 'REQUEST' | 'RESPONSE' | 'ERROR' | 'PRINT';
 interface WriteToLogHelperPayload {
     type: LogType;
     url: string;
@@ -28,6 +28,11 @@ interface LoggerState {
         REQUEST: Log[];
         RESPONSE: Log[];
         ERROR: Log[];
+        PRINT: {
+            timestamp: number;
+            type: LogType;
+            message: string;
+        };
     };
     isTrackingLogs: boolean;
     toggleTracking: () => void;

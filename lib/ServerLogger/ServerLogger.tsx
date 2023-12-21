@@ -1,5 +1,12 @@
 //@ts-nocheck
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import {
   Modal,
   View,
@@ -15,9 +22,10 @@ import useServerLogger from '../hooks/useServerLogger';
 import exportLogsToFileAndShare from '../services/exportLogsToFileAndShare';
 import styles from './styles';
 import LogTypeButtonGroup from './LogTypeButtons';
+import { LOG_TYPES } from '../types/types';
 
-const ServerLogger = () => {
-  const [logs, isTrackingLogs, toggleTracking, clearLogs] = useServerLogger();
+const ServerLogger = forwardRef((_, ref) => {
+  const [logs, isTrackingLogs, toggleTracking, clearLogs, printHelper] = useServerLogger();
   const [logType, setLogType] = useState<string>('REQUEST');
   const [showLogger, setShowLogger] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
@@ -44,16 +52,18 @@ const ServerLogger = () => {
           ...logs.REQUEST,
           ...logs.RESPONSE,
           ...logs.ERROR,
+          ...logs.PRINT,
         ]),
       300
     );
-  }, [logs.REQUEST, logs.RESPONSE, logs.ERROR]);
+  }, [logs.REQUEST, logs.RESPONSE, logs.ERROR, logs.PRINT]);
 
   const shouldDisableButtons = useMemo(
     () =>
       logs.REQUEST.length === 0 &&
       logs.RESPONSE.length === 0 &&
-      logs.ERROR.length === 0,
+      logs.ERROR.length === 0 &&
+      logs.PRINT.length === 0,
     [logs]
   );
 
@@ -65,9 +75,10 @@ const ServerLogger = () => {
       return (
         searchRegExp.test(log.url) ||
         searchRegExp.test(log.requestData) ||
-        searchRegExp.test(log.responseData)
+        searchRegExp.test(log.responseData) ||
+        searchRegExp.test(log.message)
       );
-    }).map(log => ({
+    }).map(log => (log.type === LOG_TYPES[3] ? log : {
       id: log.timestamp,
       message: log.url,
       type: log.type,
@@ -108,8 +119,18 @@ const ServerLogger = () => {
     [styles.highlightedText, styles.text]
   );
 
+  useImperativeHandle(
+    ref,
+    () => {
+      return { printHelper };
+    },
+    []
+  );
+  
+
   return (
     <Modal
+      ref={ref}
       visible={showLogger}
       animationType="fade"
       onRequestClose={onDismiss}
@@ -146,26 +167,25 @@ const ServerLogger = () => {
             keyExtractor={(item: any, index: number) => index.toString()}
             renderItem={({ item }: any) => (
               <View style={styles.logContainer}>
-                <View >
+                <View>
                   <Text style={styles.text}>
                     {moment(item.timestamp).format('HH:mm:ss')}
                   </Text>
-                  <Text style={styles.text}>
-                    HTTP {item?.type}
-                  </Text>
+                  {item?.type !== LOG_TYPES[3] && <Text style={styles.text}>HTTP {item?.type}</Text>}
                 </View>
                 <Text style={styles.text}>
                   Message: {highlightedText(item?.message, searchText)}
                 </Text>
-                <Text style={styles.text}>
+                {!!item?.status && <Text style={styles.text}>
                   Status: {highlightedText(item?.status, searchText)}
-                </Text>
-                <Text style={styles.text}>
+                </Text>}
+                {!!item?.requestData && <Text style={styles.text}>
                   Request Data: {highlightedText(item?.requestData, searchText)}
-                </Text>
-                <Text style={styles.text}>
-                  Response Data: {highlightedText(item?.responseData, searchText)}
-                </Text>
+                </Text>}
+                {!!item?.responseData && <Text style={styles.text}>
+                  Response Data:{" "}
+                  {highlightedText(item?.responseData, searchText)}
+                </Text>}
               </View>
             )}
             getItemCount={(data) => data.length}
@@ -194,6 +214,6 @@ const ServerLogger = () => {
       </View>
     </Modal>
   );
-};
+});
 
 export default ServerLogger;
