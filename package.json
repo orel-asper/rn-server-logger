@@ -1,30 +1,62 @@
 {
   "name": "rn-server-logger",
-  "version": "1.0.19",
-  "description": "A React-Native module for tracking server traffic, present it in-app and export it (designed for Harel testers)",
+  "version": "2.0.0",
+  "description": "A modern React Native module for tracking server traffic, presenting it in-app, and exporting logs with full TypeScript support",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
-    "lib/**/*"
+    "lib/**/*",
+    "!lib/**/*.test.*",
+    "!lib/**/*.spec.*"
   ],
+  "scripts": {
+    "lint": "eslint lib --ext .ts,.tsx",
+    "format": "prettier --write \"lib/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"lib/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/orel-asper/rn-server-logger"
   },
+  "keywords": [
+    "react-native",
+    "logger",
+    "network",
+    "debugging",
+    "axios",
+    "typescript",
+    "server-logs",
+    "http-logger"
+  ],
   "author": "OrelAsper",
   "license": "MIT",
-  "devDependencies": {
-    "@types/react": "17.0.3",
-    "@types/react-native": "^0.71.3",
-    "@types/react-native-share": "^3.3.3",
-    "axios": "^1.3.4",
-    "moment": "^2.29.4",
-    "react": "^18.2.0",
-    "react-native": "^0.71.3",
-    "react-native-fs": "^2.20.0",
-    "react-native-shake": "^5.1.1",
-    "react-native-share": "^8.2.1",
-    "typescript": "^4.9.5"
+  "peerDependencies": {
+    "axios": ">=1.6.0",
+    "date-fns": ">=3.0.0",
+    "react": ">=18.2.0",
+    "react-native": ">=0.74.0",
+    "react-native-fs": ">=2.20.0",
+    "react-native-share": ">=10.0.0"
   },
-  "prepare": "yarn install"
+  "devDependencies": {
+    "@react-native-community/eslint-config": "^3.2.0",
+    "@types/react": "^18.2.0",
+    "@types/react-native": "^0.76.0",
+    "@types/react-native-share": "^3.3.3",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "axios": "^1.6.7",
+    "date-fns": "^3.3.1",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.4",
+    "react": "^18.2.0",
+    "react-native": "^0.76.0",
+    "react-native-fs": "^2.20.0",
+    "react-native-share": "^10.0.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

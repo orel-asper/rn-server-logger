@@ -1,95 +1,173 @@
-
-//@ts-nocheck
 import { useEffect, useRef, useState, useCallback } from 'react';
+import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import axios from 'axios';
-import moment from 'moment';
-import { LOG_TYPES, Log, LoggerState } from "../types/types";
+import { getCurrentTimestamp } from '../utils/dateUtils';
+import { sanitizeUrl } from '../utils/sanitization';
+import {
+  LOG_TYPES,
+  LoggerState,
+  NetworkLog,
+  PrintLog,
+  UseServerLoggerOptions,
+  UseServerLoggerReturn,
+} from '../types/types';
 
-const INITIAL_STATE = { REQUEST: [], RESPONSE: [], ERROR: [], PRINT: [] }
+const INITIAL_STATE: LoggerState = { REQUEST: [], RESPONSE: [], ERROR: [], PRINT: [] };
+const DEFAULT_MAX_LOGS = 1000;
 
-const useServerLogger = () => {
-    const requestInterceptorRef = useRef();
-    const responseInterceptorRef = useRef();
-    const writeToLogHelperRef = useRef();
-    const [isTrackingLogs, setIsTrackingLogs] = useState(true);
-    const [{ REQUEST, RESPONSE, ERROR, PRINT }, setLogs] = useState(INITIAL_STATE);
+interface WriteToLogPayload {
+  type: typeof LOG_TYPES[number];
+  url?: string;
+  requestData?: any;
+  responseData?: any;
+  status?: number;
+  message?: string;
+}
 
-    useEffect(() => {
-        // Set up interceptors
-        requestInterceptorRef.current = axios.interceptors.request.use(requestInterceptorHelper, (error) => Promise.reject(error));
-        responseInterceptorRef.current = axios.interceptors.response.use(responseInterceptorHelper, responseErrorInterceptorHelper);
+const useServerLogger = (options: UseServerLoggerOptions = {}): UseServerLoggerReturn => {
+  const {
+    maxLogs = DEFAULT_MAX_LOGS,
+    enableTracking = true,
+    maskSensitiveData = false,
+  } = options;
 
-        // Remove interceptors on unmount
-        return () => {
-            axios.interceptors.request.eject(requestInterceptorRef.current);
-            axios.interceptors.response.eject(responseInterceptorRef.current);
-        };
-    }, []);
+  const requestInterceptorRef = useRef<number | undefined>();
+  const responseInterceptorRef = useRef<number | undefined>();
+  const writeToLogHelperRef = useRef<(payload: WriteToLogPayload) => void>();
+  const [isTrackingLogs, setIsTrackingLogs] = useState(enableTracking);
+  const [logs, setLogs] = useState<LoggerState>(INITIAL_STATE);
 
-    useEffect(() => {
-        writeToLogHelperRef.current = ({ type, responseData, requestData, status, url, message }) => {
-            const accessTokenIndex = url?.indexOf?.('?accessToken=');
-            if (isTrackingLogs) {
-                setLogs((prevState) => ({
-                    ...prevState,
-                    [type]: [...prevState[type], type === LOG_TYPES[3] ? {message, type, timestamp: moment().valueOf()} : {
-                        type,
-                        timestamp: moment().valueOf(),
-                        url: accessTokenIndex > -1 ? url.substring(0, accessTokenIndex) : url,
-                        requestData: typeof requestData === 'string' ? requestData : JSON.stringify(requestData || {}, null, 2),
-                        responseData: JSON.stringify(responseData || {}, null, 2),
-                        status,
-                    }],
-                }));
-            }
-        };
-    }, [isTrackingLogs]);
+  const writeToLogHelper = useCallback(
+    (payload: WriteToLogPayload) => {
+      const { type, responseData, requestData, status, url, message } = payload;
 
-    const requestInterceptorHelper = useCallback((config) => {
-        writeToLogHelperRef.current({
-            type: LOG_TYPES[0],
-            url: `${config.baseURL || ''}${config.url || ''}`,
-            requestData: config.data,
-            status: 0,
-        });
-        return config;
-    }, []);
+      if (!isTrackingLogs) return;
 
-    const responseInterceptorHelper = useCallback((response) => {
-        writeToLogHelperRef.current({
-            type: LOG_TYPES[1],
-            url: (response.config && response.config.url) || '',
-            requestData: response.config && response.config.data,
-            responseData: response && response.data,
-            status: response && response.status,
-        });
-        return response;
-    }, []);
+      setLogs(prevState => {
+        const newState = { ...prevState };
+        const timestamp = getCurrentTimestamp();
 
-    const responseErrorInterceptorHelper = useCallback((error) => {
-        writeToLogHelperRef.current({
-            type: LOG_TYPES[2],
-            url: error.config && error.config.url || '',
-            requestData: error.config && error.config.data,
-            responseData: error && error.data,
-            status: error && error.status,
-        });
-        return Promise.reject(error);
-    }, []);
+        if (type === 'PRINT') {
+          const printLog: PrintLog = {
+            message: message || '',
+            type: 'PRINT',
+            timestamp,
+          };
 
-    const printHelper = useCallback((message) => {
-        writeToLogHelperRef.current({
-            type: LOG_TYPES[3],
-            message: typeof message === 'string' ? message : JSON.stringify(message, null, 4)
-        });
-        return message;
-    }, []);
+          // Apply max log limit with rotation
+          const updatedPrintLogs = [...prevState.PRINT, printLog];
+          newState.PRINT =
+            updatedPrintLogs.length > maxLogs
+              ? updatedPrintLogs.slice(-maxLogs)
+              : updatedPrintLogs;
+        } else {
+          const networkLog: NetworkLog = {
+            type: type as 'REQUEST' | 'RESPONSE' | 'ERROR',
+            timestamp,
+            url: url ? sanitizeUrl(url) : '',
+            requestData:
+              typeof requestData === 'string' ? requestData : JSON.stringify(requestData || {}, null, 2),
+            responseData: JSON.stringify(responseData || {}, null, 2),
+            status: status || 0,
+          };
 
-    const toggleTracking = (value) => setIsTrackingLogs(value);
+          const logType = type as 'REQUEST' | 'RESPONSE' | 'ERROR';
+          const updatedLogs = [...prevState[logType], networkLog];
+          newState[logType] =
+            updatedLogs.length > maxLogs ? updatedLogs.slice(-maxLogs) : updatedLogs;
+        }
 
-    const clearLogs = () => setLogs(INITIAL_STATE);
+        return newState;
+      });
+    },
+    [isTrackingLogs, maxLogs]
+  );
 
-    return [{ REQUEST, RESPONSE, ERROR, PRINT }, isTrackingLogs, toggleTracking, clearLogs, printHelper]
+  // Update ref when writeToLogHelper changes
+  useEffect(() => {
+    writeToLogHelperRef.current = writeToLogHelper;
+  }, [writeToLogHelper]);
+
+  const requestInterceptorHelper = useCallback(
+    (config: InternalAxiosRequestConfig) => {
+      writeToLogHelperRef.current?.({
+        type: 'REQUEST',
+        url: `${config.baseURL || ''}${config.url || ''}`,
+        requestData: config.data,
+        status: 0,
+      });
+      return config;
+    },
+    []
+  );
+
+  const responseInterceptorHelper = useCallback((response: AxiosResponse) => {
+    writeToLogHelperRef.current?.({
+      type: 'RESPONSE',
+      url: response.config?.url || '',
+      requestData: response.config?.data,
+      responseData: response?.data,
+      status: response?.status,
+    });
+    return response;
+  }, []);
+
+  const responseErrorInterceptorHelper = useCallback((error: AxiosError) => {
+    writeToLogHelperRef.current?.({
+      type: 'ERROR',
+      url: error.config?.url || '',
+      requestData: error.config?.data,
+      responseData: (error.response as any)?.data,
+      status: error.response?.status,
+    });
+    return Promise.reject(error);
+  }, []);
+
+  const printHelper = useCallback((message: string | object) => {
+    const messageStr = typeof message === 'string' ? message : JSON.stringify(message, null, 4);
+    writeToLogHelperRef.current?.({
+      type: 'PRINT',
+      message: messageStr,
+    });
+  }, []);
+
+  useEffect(() => {
+    // Set up interceptors
+    requestInterceptorRef.current = axios.interceptors.request.use(
+      requestInterceptorHelper,
+      error => Promise.reject(error)
+    );
+    responseInterceptorRef.current = axios.interceptors.response.use(
+      responseInterceptorHelper,
+      responseErrorInterceptorHelper
+    );
+
+    // Remove interceptors on unmount
+    return () => {
+      if (requestInterceptorRef.current !== undefined) {
+        axios.interceptors.request.eject(requestInterceptorRef.current);
+      }
+      if (responseInterceptorRef.current !== undefined) {
+        axios.interceptors.response.eject(responseInterceptorRef.current);
+      }
+    };
+  }, [requestInterceptorHelper, responseInterceptorHelper, responseErrorInterceptorHelper]);
+
+  const toggleTracking = useCallback((value: boolean) => {
+    setIsTrackingLogs(value);
+  }, []);
+
+  const clearLogs = useCallback(() => {
+    setLogs(INITIAL_STATE);
+  }, []);
+
+  return {
+    logs,
+    isTrackingLogs,
+    toggleTracking,
+    clearLogs,
+    printHelper,
+  };
 };
 
 export default useServerLogger;
