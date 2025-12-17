@@ -7,4 +7,3 @@ export interface ServerLoggerRef {
 declare const ServerLogger: ForwardRefExoticComponent<RefAttributes<ServerLoggerRef>>;
 
 export default ServerLogger;
-

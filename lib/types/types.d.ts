@@ -1,6 +1,6 @@
 export const LOG_TYPES = ['REQUEST', 'RESPONSE', 'ERROR', 'PRINT'] as const;
 
-export type LogType = typeof LOG_TYPES[number];
+export type LogType = (typeof LOG_TYPES)[number];
 
 export interface BaseLog {
   type: LogType;

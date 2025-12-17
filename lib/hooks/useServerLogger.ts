@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import type { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import axios from 'axios';
 import { getCurrentTimestamp } from '../utils/dateUtils';
 import { sanitizeUrl } from '../utils/sanitization';
@@ -16,7 +16,7 @@ const INITIAL_STATE: LoggerState = { REQUEST: [], RESPONSE: [], ERROR: [], PRINT
 const DEFAULT_MAX_LOGS = 1000;
 
 interface WriteToLogPayload {
-  type: typeof LOG_TYPES[number];
+  type: (typeof LOG_TYPES)[number];
   url?: string;
   requestData?: any;
   responseData?: any;
@@ -28,7 +28,8 @@ const useServerLogger = (options: UseServerLoggerOptions = {}): UseServerLoggerR
   const {
     maxLogs = DEFAULT_MAX_LOGS,
     enableTracking = true,
-    maskSensitiveData = false,
+    // maskSensitiveData is available for future use
+    // maskSensitiveData = false,
   } = options;
 
   const requestInterceptorRef = useRef<number | undefined>();
@@ -57,16 +58,16 @@ const useServerLogger = (options: UseServerLoggerOptions = {}): UseServerLoggerR
           // Apply max log limit with rotation
           const updatedPrintLogs = [...prevState.PRINT, printLog];
           newState.PRINT =
-            updatedPrintLogs.length > maxLogs
-              ? updatedPrintLogs.slice(-maxLogs)
-              : updatedPrintLogs;
+            updatedPrintLogs.length > maxLogs ? updatedPrintLogs.slice(-maxLogs) : updatedPrintLogs;
         } else {
           const networkLog: NetworkLog = {
             type: type as 'REQUEST' | 'RESPONSE' | 'ERROR',
             timestamp,
             url: url ? sanitizeUrl(url) : '',
             requestData:
-              typeof requestData === 'string' ? requestData : JSON.stringify(requestData || {}, null, 2),
+              typeof requestData === 'string'
+                ? requestData
+                : JSON.stringify(requestData || {}, null, 2),
             responseData: JSON.stringify(responseData || {}, null, 2),
             status: status || 0,
           };
@@ -88,18 +89,15 @@ const useServerLogger = (options: UseServerLoggerOptions = {}): UseServerLoggerR
     writeToLogHelperRef.current = writeToLogHelper;
   }, [writeToLogHelper]);
 
-  const requestInterceptorHelper = useCallback(
-    (config: InternalAxiosRequestConfig) => {
-      writeToLogHelperRef.current?.({
-        type: 'REQUEST',
-        url: `${config.baseURL || ''}${config.url || ''}`,
-        requestData: config.data,
-        status: 0,
-      });
-      return config;
-    },
-    []
-  );
+  const requestInterceptorHelper = useCallback((config: InternalAxiosRequestConfig) => {
+    writeToLogHelperRef.current?.({
+      type: 'REQUEST',
+      url: `${config.baseURL || ''}${config.url || ''}`,
+      requestData: config.data,
+      status: 0,
+    });
+    return config;
+  }, []);
 
   const responseInterceptorHelper = useCallback((response: AxiosResponse) => {
     writeToLogHelperRef.current?.({

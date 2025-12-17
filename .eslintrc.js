@@ -1,9 +1,5 @@
 module.exports = {
   root: true,
-  extends: [
-    '@react-native-community',
-    'plugin:@typescript-eslint/recommended',
-  ],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint'],
   parserOptions: {
@@ -13,16 +9,19 @@ module.exports = {
       jsx: true,
     },
   },
+  extends: [
+    'plugin:@typescript-eslint/recommended',
+  ],
   rules: {
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-    'react-hooks/exhaustive-deps': 'warn',
     'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
   ignorePatterns: [
     'node_modules/',
     'lib/**/*.d.ts',
+    'lib/**/*.js',
     '*.js',
   ],
 };

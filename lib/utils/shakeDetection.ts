@@ -1,4 +1,4 @@
-import { DeviceEventEmitter, NativeModules, Platform } from 'react-native';
+import { DeviceEventEmitter, Platform } from 'react-native';
 
 let shakeSubscription: any = null;
 

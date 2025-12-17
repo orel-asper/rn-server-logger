@@ -29,7 +29,7 @@ import useServerLogger from '../hooks/useServerLogger';
 import exportLogsToFileAndShare from '../services/exportLogsToFileAndShare';
 import { useStyles } from './styles';
 import LogTypeButtonGroup from './LogTypeButtons';
-import { LOG_TYPES, LogType, Log, NetworkLog, PrintLog } from '../types/types';
+import { LogType, Log, NetworkLog, PrintLog } from '../types/types';
 
 export interface ServerLoggerRef {
   printHelper: (message: string | object) => void;
@@ -70,12 +70,7 @@ const ServerLogger = forwardRef<ServerLoggerRef>((_, ref) => {
   const onExport = useCallback(async () => {
     setIsExporting(true);
     try {
-      const allLogs: Log[] = [
-        ...logs.REQUEST,
-        ...logs.RESPONSE,
-        ...logs.ERROR,
-        ...logs.PRINT,
-      ];
+      const allLogs: Log[] = [...logs.REQUEST, ...logs.RESPONSE, ...logs.ERROR, ...logs.PRINT];
 
       await exportLogsToFileAndShare(allLogs, { format: 'txt' });
     } catch (error) {
@@ -168,11 +163,7 @@ const ServerLogger = forwardRef<ServerLoggerRef>((_, ref) => {
               {!isPrintLog && <Text style={styles.text}>HTTP {item.type}</Text>}
             </View>
             <Text style={styles.text}>
-              Message:{' '}
-              {highlightedText(
-                isPrintLog ? printLog.message : networkLog.url,
-                searchText
-              )}
+              Message: {highlightedText(isPrintLog ? printLog.message : networkLog.url, searchText)}
             </Text>
             {!isPrintLog && networkLog.status > 0 && (
               <Text style={styles.text}>
@@ -212,11 +203,7 @@ const ServerLogger = forwardRef<ServerLoggerRef>((_, ref) => {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.headerContainer}>
             <Text style={styles.title}>SERVER LOGS</Text>
-            <Button
-              title="Close"
-              onPress={onDismiss}
-              accessibilityLabel="Close logger"
-            />
+            <Button title="Close" onPress={onDismiss} accessibilityLabel="Close logger" />
             <Button
               title="Export"
               onPress={onExport}
@@ -253,9 +240,7 @@ const ServerLogger = forwardRef<ServerLoggerRef>((_, ref) => {
               ListEmptyComponent={() => (
                 <View style={styles.emptyListContainer}>
                   <Text style={styles.emptyText}>
-                    {searchText
-                      ? 'No logs match your search'
-                      : `No ${logType} logs available`}
+                    {searchText ? 'No logs match your search' : `No ${logType} logs available`}
                   </Text>
                 </View>
               )}

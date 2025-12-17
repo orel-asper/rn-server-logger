@@ -49,8 +49,7 @@ const exportLogsToFileAndShare = async (
     const finalFileName = fileName || defaultFileName;
 
     // Determine file path based on platform
-    const directory =
-      Platform.OS === 'ios' ? RNFS.DocumentDirectoryPath : RNFS.CachesDirectoryPath;
+    const directory = Platform.OS === 'ios' ? RNFS.DocumentDirectoryPath : RNFS.CachesDirectoryPath;
     const filepath = `${directory}/${finalFileName}`;
 
     // Write file
@@ -148,4 +147,3 @@ const getFileType = (extension: string): string => {
 };
 
 export default exportLogsToFileAndShare;
-

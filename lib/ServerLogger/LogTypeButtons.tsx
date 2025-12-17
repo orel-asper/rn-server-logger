@@ -14,7 +14,8 @@ const LogTypeButton: React.FC<LogTypeButtonProps> = ({ type, onPress, isActive }
 
   return (
     <TouchableOpacity onPress={onPress} accessibilityLabel={`Filter by ${type} logs`}>
-      <View style={[styles.logTypeButtonContainer, isActive && styles.activeLogTypeButtonContainer]}>
+      <View
+        style={[styles.logTypeButtonContainer, isActive && styles.activeLogTypeButtonContainer]}>
         <Text style={[styles.text, isActive && styles.activeLogTypeButtonText]}>{type}</Text>
       </View>
     </TouchableOpacity>
@@ -29,7 +30,12 @@ interface LogTypeButtonsProps {
 const LogTypeButtons: React.FC<LogTypeButtonsProps> = ({ logType, setLogType }) => {
   const renderLogTypeButton = useCallback(
     (type: LogType) => (
-      <LogTypeButton key={type} type={type} isActive={type === logType} onPress={() => setLogType(type)} />
+      <LogTypeButton
+        key={type}
+        type={type}
+        isActive={type === logType}
+        onPress={() => setLogType(type)}
+      />
     ),
     [logType, setLogType]
   );
@@ -38,4 +44,3 @@ const LogTypeButtons: React.FC<LogTypeButtonsProps> = ({ logType, setLogType }) 
 };
 
 export default LogTypeButtons;
-
