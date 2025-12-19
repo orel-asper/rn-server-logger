@@ -1,4 +1,3 @@
-//@ts-nocheck
 import React, {
   useCallback,
   useEffect,
@@ -13,50 +12,74 @@ import {
   Text,
   Switch,
   Button,
-  VirtualizedList,
+  FlatList,
   TextInput,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  TouchableOpacity,
+  Clipboard,
+  Alert,
 } from 'react-native';
-import RNShake from 'react-native-shake';
-import moment from 'moment';
+import { formatTime } from '../utils/dateUtils';
+import { escapeRegex } from '../utils/sanitization';
+import { startShakeListener, stopShakeListener } from '../utils/shakeDetection';
 import useServerLogger from '../hooks/useServerLogger';
 import exportLogsToFileAndShare from '../services/exportLogsToFileAndShare';
-import styles from './styles';
+import { useStyles } from './styles';
 import LogTypeButtonGroup from './LogTypeButtons';
-import { LOG_TYPES } from '../types/types';
+import { LogType, Log, NetworkLog, PrintLog } from '../types/types';
 
-const ServerLogger = forwardRef((_, ref) => {
-  const [logs, isTrackingLogs, toggleTracking, clearLogs, printHelper] = useServerLogger();
-  const [logType, setLogType] = useState<string>('REQUEST');
+export interface ServerLoggerRef {
+  printHelper: (message: string | object) => void;
+}
+
+const ServerLogger = forwardRef<ServerLoggerRef>((_, ref) => {
+  const { logs, isTrackingLogs, toggleTracking, clearLogs, printHelper } = useServerLogger({
+    maxLogs: 1000,
+    enableTracking: true,
+  });
+
+  const [logType, setLogType] = useState<LogType>('REQUEST');
   const [showLogger, setShowLogger] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  const onDismiss = () => setShowLogger(false);
-  const onShake = () => setShowLogger(true);
+  const styles = useStyles();
+
+  const onDismiss = useCallback(() => {
+    setShowLogger(false);
+  }, []);
+
+  const onShake = useCallback(() => {
+    setShowLogger(true);
+  }, []);
 
   const onClear = useCallback(() => {
     clearLogs();
   }, [clearLogs]);
 
   useEffect(() => {
-    let subscription = RNShake.addListener(() => onShake());
+    startShakeListener(onShake);
     return () => {
-      subscription.remove();
+      stopShakeListener();
     };
-  }, []);
+  }, [onShake]);
 
-  const onExport = useCallback(() => {
-    onDismiss();
-    setTimeout(
-      () =>
-        exportLogsToFileAndShare([
-          ...logs.REQUEST,
-          ...logs.RESPONSE,
-          ...logs.ERROR,
-          ...logs.PRINT,
-        ]),
-      300
-    );
-  }, [logs.REQUEST, logs.RESPONSE, logs.ERROR, logs.PRINT]);
+  const onExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const allLogs: Log[] = [...logs.REQUEST, ...logs.RESPONSE, ...logs.ERROR, ...logs.PRINT];
+
+      await exportLogsToFileAndShare(allLogs, { format: 'txt' });
+    } catch (error) {
+      Alert.alert('Export Failed', 'Failed to export logs. Please try again.');
+      console.error('Export error:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [logs]);
 
   const shouldDisableButtons = useMemo(
     () =>
@@ -68,49 +91,42 @@ const ServerLogger = forwardRef((_, ref) => {
   );
 
   const filteredLogs = useMemo(() => {
-    const searchRegExp = new RegExp(searchText, 'i');
+    const escapedSearchText = escapeRegex(searchText);
+    const searchRegExp = new RegExp(escapedSearchText, 'i');
     const logTypeLogs = logs[logType] || [];
 
     return logTypeLogs.filter(log => {
-      return (
-        searchRegExp.test(log.url) ||
-        searchRegExp.test(log.requestData) ||
-        searchRegExp.test(log.responseData) ||
-        searchRegExp.test(log.message)
-      );
-    }).map(log => (log.type === LOG_TYPES[3] ? log : {
-      id: log.timestamp,
-      message: log.url,
-      type: log.type,
-      timestamp: log.timestamp,
-      requestData: log.requestData,
-      responseData: log.responseData,
-      status: log.status,
-    }));
+      if (log.type === 'PRINT') {
+        return searchRegExp.test(log.message || '');
+      } else {
+        const networkLog = log as NetworkLog;
+        return (
+          searchRegExp.test(networkLog.url || '') ||
+          searchRegExp.test(networkLog.requestData || '') ||
+          searchRegExp.test(networkLog.responseData || '')
+        );
+      }
+    });
   }, [logs, logType, searchText]);
 
   const highlightedText = useCallback(
-    (text: string | object, match: string) => {
-      text = String(text);
-      match = String(match);
+    (text: string | number | undefined, match: string) => {
+      const textStr = String(text || '');
+      const matchStr = String(match || '');
 
-      if (!match) {
-        return <Text style={styles.text}>{text}</Text>;
+      if (!matchStr) {
+        return <Text style={styles.text}>{textStr}</Text>;
       }
 
-      if (typeof text !== 'string' || typeof match !== 'string') {
-        return <Text style={styles.text}>Invalid input</Text>;
-      }
+      const escapedMatch = escapeRegex(matchStr);
+      const regex = new RegExp(escapedMatch, 'gi');
+      const parts = textStr.split(regex);
+      const matches = textStr.match(regex);
 
-      const regex = new RegExp(match, 'gi');
-      const parts = text.split(regex);
-      const matches = text.match(regex);
       const result = parts.map((part, i) => (
         <React.Fragment key={i}>
           {part}
-          {matches && matches[i] && (
-            <Text style={styles.highlightedText}>{matches[i]}</Text>
-          )}
+          {matches && matches[i] && <Text style={styles.highlightedText}>{matches[i]}</Text>}
         </React.Fragment>
       ));
 
@@ -119,101 +135,145 @@ const ServerLogger = forwardRef((_, ref) => {
     [styles.highlightedText, styles.text]
   );
 
+  const copyToClipboard = useCallback((text: string) => {
+    Clipboard.setString(text);
+    Alert.alert('Copied', 'Log content copied to clipboard');
+  }, []);
+
+  const renderLogItem = useCallback(
+    ({ item }: { item: Log }) => {
+      const isPrintLog = item.type === 'PRINT';
+      const printLog = item as PrintLog;
+      const networkLog = item as NetworkLog;
+
+      return (
+        <TouchableOpacity
+          onLongPress={() =>
+            copyToClipboard(
+              isPrintLog
+                ? printLog.message
+                : `${networkLog.url}\n${networkLog.requestData}\n${networkLog.responseData}`
+            )
+          }
+          accessibilityLabel={`Log entry from ${formatTime(item.timestamp)}`}
+          accessibilityHint="Long press to copy to clipboard">
+          <View style={styles.logContainer}>
+            <View>
+              <Text style={styles.text}>{formatTime(item.timestamp)}</Text>
+              {!isPrintLog && <Text style={styles.text}>HTTP {item.type}</Text>}
+            </View>
+            <Text style={styles.text}>
+              Message: {highlightedText(isPrintLog ? printLog.message : networkLog.url, searchText)}
+            </Text>
+            {!isPrintLog && networkLog.status > 0 && (
+              <Text style={styles.text}>
+                Status: {highlightedText(networkLog.status, searchText)}
+              </Text>
+            )}
+            {!isPrintLog && networkLog.requestData && (
+              <Text style={styles.text} numberOfLines={3}>
+                Request Data: {highlightedText(networkLog.requestData, searchText)}
+              </Text>
+            )}
+            {!isPrintLog && networkLog.responseData && (
+              <Text style={styles.text} numberOfLines={3}>
+                Response Data: {highlightedText(networkLog.responseData, searchText)}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [styles, searchText, highlightedText, copyToClipboard]
+  );
+
   useImperativeHandle(
     ref,
-    () => {
-      return { printHelper };
-    },
-    []
+    () => ({
+      printHelper,
+    }),
+    [printHelper]
   );
-  
 
   return (
-    <Modal
-      ref={ref}
-      visible={showLogger}
-      animationType="fade"
-      onRequestClose={onDismiss}
-    >
-      <View style={styles.container}>
-        <View style={styles.headerContainer}>
-          <Text style={styles.title}>SERVER LOGS</Text>
-          <Button
-            title="Close"
-            onPress={onDismiss}
-          />
-          <Button
-            title="Export"
-            onPress={onExport}
-            disabled={shouldDisableButtons}
-          />
-          <Button
-            title="Clear"
-            onPress={onClear}
-            disabled={shouldDisableButtons}
-          />
-        </View>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.TextInput}
-            onChangeText={text => setSearchText(text)}
-            value={searchText}
-            placeholder="Search"
-          />
-        </View>
-        <View style={styles.logsContainer}>
-          <VirtualizedList
-            data={filteredLogs}
-            keyExtractor={(item: any, index: number) => index.toString()}
-            renderItem={({ item }: any) => (
-              <View style={styles.logContainer}>
-                <View>
-                  <Text style={styles.text}>
-                    {moment(item.timestamp).format('HH:mm:ss')}
-                  </Text>
-                  {item?.type !== LOG_TYPES[3] && <Text style={styles.text}>HTTP {item?.type}</Text>}
-                </View>
-                <Text style={styles.text}>
-                  Message: {highlightedText(item?.message, searchText)}
-                </Text>
-                {!!item?.status && <Text style={styles.text}>
-                  Status: {highlightedText(item?.status, searchText)}
-                </Text>}
-                {!!item?.requestData && <Text style={styles.text}>
-                  Request Data: {highlightedText(item?.requestData, searchText)}
-                </Text>}
-                {!!item?.responseData && <Text style={styles.text}>
-                  Response Data:{" "}
-                  {highlightedText(item?.responseData, searchText)}
-                </Text>}
-              </View>
-            )}
-            getItemCount={(data) => data.length}
-            getItem={(data, index) => data[index]}
-            initialNumToRender={5}
-            ListEmptyComponent={() => (
-              <View style={styles.emptyListContainer}>
-                <Text style={styles.title}>{'No logs in the\npast 60 seconds'}</Text>
-              </View>
-            )}
-          />
-        </View>
-        <View style={styles.footerContainer}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.text}>Tracking</Text>
-            <Switch
-              value={isTrackingLogs}
-              onValueChange={toggleTracking}
-              style={{ marginLeft: 5 }}
+    <Modal visible={showLogger} animationType="slide" onRequestClose={onDismiss}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.headerContainer}>
+            <Text style={styles.title}>SERVER LOGS</Text>
+            <Button title="Close" onPress={onDismiss} accessibilityLabel="Close logger" />
+            <Button
+              title="Export"
+              onPress={onExport}
+              disabled={shouldDisableButtons || isExporting}
+              accessibilityLabel="Export logs"
+            />
+            <Button
+              title="Clear"
+              onPress={onClear}
+              disabled={shouldDisableButtons}
+              accessibilityLabel="Clear all logs"
             />
           </View>
-          <View style={styles.logTypeButtonsContainer}>
-            <LogTypeButtonGroup logType={logType} setLogType={setLogType} />
+
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.textInput}
+              onChangeText={setSearchText}
+              value={searchText}
+              placeholder="Search logs..."
+              placeholderTextColor="#888"
+              accessibilityLabel="Search logs"
+            />
           </View>
-        </View>
-      </View>
+
+          <View style={styles.logsContainer}>
+            <FlatList
+              data={filteredLogs}
+              keyExtractor={(item, index) => `${item.timestamp}-${index}`}
+              renderItem={renderLogItem}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyListContainer}>
+                  <Text style={styles.emptyText}>
+                    {searchText ? 'No logs match your search' : `No ${logType} logs available`}
+                  </Text>
+                </View>
+              )}
+            />
+          </View>
+
+          <View style={styles.footerContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.text}>Tracking</Text>
+              <Switch
+                value={isTrackingLogs}
+                onValueChange={toggleTracking}
+                style={{ marginLeft: 5 }}
+                accessibilityLabel="Toggle log tracking"
+              />
+            </View>
+            <View style={styles.logTypeButtonsContainer}>
+              <LogTypeButtonGroup logType={logType} setLogType={setLogType} />
+            </View>
+          </View>
+
+          {isExporting && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.loadingText}>Exporting logs...</Text>
+            </View>
+          )}
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 });
+
+ServerLogger.displayName = 'ServerLogger';
 
 export default ServerLogger;

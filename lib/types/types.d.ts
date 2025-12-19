@@ -1,47 +1,51 @@
-declare const LOG_TYPES: LogType[];
-declare type LogType = 'REQUEST' | 'RESPONSE' | 'ERROR' | 'PRINT';
-interface WriteToLogHelperPayload {
-    type: LogType;
-    url: string;
-    requestData: any;
-    responseData: any;
-    status: number;
+export const LOG_TYPES = ['REQUEST', 'RESPONSE', 'ERROR', 'PRINT'] as const;
+
+export type LogType = (typeof LOG_TYPES)[number];
+
+export interface BaseLog {
+  type: LogType;
+  timestamp: number;
 }
 
-interface Log {
-    type: LogType;
-    url: string;
-    timestamp: number;
-    requestData: string;
-    responseData: string;
-    status: string;
+export interface NetworkLog extends BaseLog {
+  type: 'REQUEST' | 'RESPONSE' | 'ERROR';
+  url: string;
+  requestData: string;
+  responseData: string;
+  status: number;
 }
 
-interface Logger {
-    info: (message: string, data?: any) => void;
-    warn: (message: string, data?: any) => void;
-    error: (message: string, error?: Error, data?: any) => void;
+export interface PrintLog extends BaseLog {
+  type: 'PRINT';
+  message: string;
 }
 
-interface LoggerState {
-    logs: {
-        REQUEST: Log[];
-        RESPONSE: Log[];
-        ERROR: Log[];
-        PRINT: {
-            timestamp: number;
-            type: LogType;
-            message: string;
-        };
-    };
-    isTrackingLogs: boolean;
-    toggleTracking: () => void;
+export type Log = NetworkLog | PrintLog;
+
+export interface LoggerState {
+  REQUEST: NetworkLog[];
+  RESPONSE: NetworkLog[];
+  ERROR: NetworkLog[];
+  PRINT: PrintLog[];
 }
 
-interface ExportOptions {
-    fileName: string;
-    fileType: string;
-    subject: string;
+export interface UseServerLoggerOptions {
+  maxLogs?: number;
+  enableTracking?: boolean;
+  maskSensitiveData?: boolean;
+  customSensitiveParams?: string[];
 }
 
-export { LOG_TYPES, LogType, WriteToLogHelperPayload, Log, Logger, LoggerState, ExportOptions };
+export interface UseServerLoggerReturn {
+  logs: LoggerState;
+  isTrackingLogs: boolean;
+  toggleTracking: (value: boolean) => void;
+  clearLogs: () => void;
+  printHelper: (message: string | object) => void;
+}
+
+export interface ExportOptions {
+  format?: 'txt' | 'json' | 'csv';
+  includeTypes?: LogType[];
+  fileName?: string;
+}
